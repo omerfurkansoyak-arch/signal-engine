@@ -2,15 +2,22 @@ import websocket
 import json
 
 def on_message(ws, message):
-    data = json.loads(message)
-    k = data['k']   # kline datası
-    print("------ Candle ------")
-    print("Time:", k["t"])
-    print("Open:", k["o"])
-    print("High:", k["h"])
-    print("Low:", k["l"])
-    print("Close:", k["c"])
-    print("Volume:", k["v"])
+    try:
+        data = json.loads(message)
+
+        # kline datası mesajda var mı?
+        if "k" in data:
+            k = data["k"]
+            print("------ 1m Candle ------")
+            print("Time:", k['t'])
+            print("Open:", k['o'])
+            print("High:", k['h'])
+            print("Low:", k['l'])
+            print("Close:", k['c'])
+            print("Volume:", k['v'])
+            print("-----------------------")
+    except:
+        pass
 
 def on_error(ws, error):
     print("HATA:", error)
