@@ -1,46 +1,61 @@
-import json
 import time
-from websocket import WebSocketApp
+import requests
+import datetime
 
 SYMBOLS = ["BINANCE:BTCUSDT", "BINANCE:ETHUSDT"]
+RESOLUTION = "1"  # 1 dakika
+INTERVAL = 10     # 10 saniyede bir güncelleme
 
-def on_open(ws):
-    print("TradingView bağlantısı açıldı.")
-    for s in SYMBOLS:
-        session = "cs_1"
 
-        msg = {
-            "session_id": "session1",
-            "timestamp": int(time.time()),
-            "events": [
-                {"name": "chart_create_session", "params": [session]},
-                {"name": "resolve_symbol", "params": [session, "symbol_1", s]},
-                {"name": "create_series", "params": [session, "s_1", "symbol_1", "1", 1]}
-            ]
-        }
+def get_unix():
+    return int(time.time())
 
-        ws.send(json.dumps(msg))
 
-def on_message(ws, message):
-    print("Gelen veri:")
-    print(message)
-
-def on_error(ws, error):
-    print("Hata:", error)
-
-def on_close(ws, code, msg):
-    print("Bağlantı kapandı:", code, msg)
-
-def run():
-    ws = WebSocketApp(
-        "wss://data.tradingview.com/socket.io/websocket?from=chart",
-        on_open=on_open,
-        on_message=on_message,
-        on_error=on_error,
-        on_close=on_close,
+def fetch_tv_candle(symbol):
+    now = get_unix()
+    url = (
+        f"https://data.tradingview.com/v3/history?"
+        f"symbol={symbol}&resolution={RESOLUTION}&from={now-500}&to={now}"
     )
-    ws.run_forever()
+
+    r = requests.get(url)
+    if r.status_code != 200:
+        raise Exception(f"TradingView error: {r.status_code}")
+
+    data = r.json()
+
+    if "t" not in data or len(data["t"]) == 0:
+        raise Exception("Empty candle data")
+
+    i = -1  # son mum
+    return {
+        "symbol": symbol,
+        "timestamp": datetime.datetime.utcfromtimestamp(data["t"][i]).isoformat(),
+        "open": data["o"][i],
+        "high": data["h"][i],
+        "low": data["l"][i],
+        "close": data["c"][i],
+        "volume": data["v"][i]
+    }
+
+
+def main():
+    print("TradingView JSON Collector başlatıldı...")
+
+    while True:
+        for s in SYMBOLS:
+            try:
+                c = fetch_tv_candle(s)
+                print(
+                    f"{c['symbol']} | {c['timestamp']} | "
+                    f"O:{c['open']} H:{c['high']} L:{c['low']} C:{c['close']} V:{c['volume']}"
+                )
+
+            except Exception as e:
+                print("HATA:", e)
+
+        time.sleep(INTERVAL)
+
 
 if __name__ == "__main__":
-    run()
-
+    main()
