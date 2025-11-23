@@ -1,2 +1,2 @@
-cd /opt/signal-engine
-nano requirements.txt
+websocket-client==1.7.0
+requests
