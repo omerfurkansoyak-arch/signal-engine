@@ -1,5 +1,2 @@
-ccxt
-pytz
 requests
-asyncio
-python-dotenv
+
