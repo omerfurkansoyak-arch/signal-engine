@@ -1,50 +1,34 @@
-import time
-import requests
-from datetime import datetime
+import websocket
+import json
 
-# Hangi pariteleri takip edeceğiz
-SYMBOLS = ["BTCUSDT", "ETHUSDT"]  # istersen buraya başka USDT pariteleri ekleyebilirsin
-INTERVAL = "1m"                   # 1 dakikalık mum
-API_URL = "https://api.binance.com/api/v3/klines"
+def on_message(ws, message):
+    data = json.loads(message)
+    k = data['k']   # kline datası
+    print("------ Candle ------")
+    print("Time:", k["t"])
+    print("Open:", k["o"])
+    print("High:", k["h"])
+    print("Low:", k["l"])
+    print("Close:", k["c"])
+    print("Volume:", k["v"])
 
+def on_error(ws, error):
+    print("HATA:", error)
 
-def get_latest_candle(symbol: str):
-    params = {
-        "symbol": symbol,
-        "interval": INTERVAL,
-        "limit": 1,
-    }
-    resp = requests.get(API_URL, params=params, timeout=5)
-    resp.raise_for_status()
-    k = resp.json()[0]  # tek mum istedik, o yüzden [0]
+def on_close(ws, close_status_code, close_msg):
+    print("Bağlantı kapandı:", close_status_code, close_msg)
 
-    return {
-        "symbol": symbol,
-        "open_time": datetime.utcfromtimestamp(k[0] / 1000).isoformat(),
-        "open": float(k[1]),
-        "high": float(k[2]),
-        "low": float(k[3]),
-        "close": float(k[4]),
-        "volume": float(k[5]),
-    }
+def on_open(ws):
+    print("Binance WS bağlantısı açıldı.")
 
+symbol = "btcusdt"
 
-def main_loop():
-    print("Binance REST collector başlıyor...")
-    while True:
-        for s in SYMBOLS:
-            try:
-                c = get_latest_candle(s)
-                print(
-                    f"[{c['symbol']}] {c['open_time']} "
-                    f"O:{c['open']} H:{c['high']} L:{c['low']} C:{c['close']} V:{c['volume']}"
-                )
-            except Exception as e:
-                print(f"HATA ({s}): {e}")
+ws = websocket.WebSocketApp(
+    f"wss://stream.binance.com:9443/ws/{symbol}@kline_1m",
+    on_open=on_open,
+    on_message=on_message,
+    on_error=on_error,
+    on_close=on_close
+)
 
-        # 60 saniyede bir yeni mum gelir
-        time.sleep(60)
-
-
-if __name__ == "__main__":
-    main_loop()
+ws.run_forever()
